@@ -1,7 +1,14 @@
+import java.nio.file.Paths;
+import java.util.HashMap;
+
+
 public class CleanLog {
 
     public static void main(String[] args) {
-        String string =FileUtils.ReadFile("C:\\Users\\56905\\Desktop\\AccountManager.java");
-        System.out.println(string);
+        System.setProperty("line.separator", "\n");
+        HashMap<String, Object> filenames = null;
+        FileUtils.cleanLog("D:\\Etix-Repository\\etix\\ticketing");
+        // FileUtils.checkFiles(Paths.get("D:\\Etix-Repository\\etix\\ticketing\\src\\main\\java\\com\\etix\\ticketing\\Performance.java"));
+
     }
 }

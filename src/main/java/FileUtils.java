@@ -1,126 +1,80 @@
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
 
+import org.omg.CORBA.TRANSACTION_MODE;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class FileUtils {
 
-    private static final Logger LOGGER = Logger.getLogger(FileUtils.class);
+    private static final Logger LOGGER = Logger.getLogger(FileUtils.class.toString());
 
 
-    private String fFname = null;
-    List<String> fileList = new ArrayList<String>();
-
-    public String getFileName(String cfgFilename) {
-        if (this.fFname == null) {
-            String str[] = cfgFilename.split("/");
-            String filename = str[str.length - 1];
-            this.fFname = filename;
-        }
-
-        return this.fFname;
-    }
-
-    // 写文件
-    public static int writeFile(String fileName, byte[] content) {
-
-        LOGGER.info("开始写文件:[" + fileName + "]");
-
-        File file = new File(fileName);
-        File fileparent = file.getParentFile();
-        if (!fileparent.exists()) {
-            LOGGER.info("文件夹不存在，创建该目录");
-            fileparent.mkdirs();
-        }
-        FileOutputStream os = null;
-        try {
-            os = new FileOutputStream(fileName);
-            os.write(content);
-            os.flush();
-
-        } catch (Exception e) {
-            LOGGER.info("写文件:[" + fileName + "]异常，异常信息为:["
-                    + e.getMessage() + "]");
-            return -1;
-        } finally {
-            try {
-                if (null != os)
-                    os.close();
-            } catch (IOException e) {
-            }
-        }
-        os = null;
-        LOGGER.info("写文件:[" + fileName + "]完成!");
-        return 0;
-    }
-
-    /**
-     * 获取windows/linux的项目根目录
-     *
-     * @return
-     */
-    public static String getConTextPath() {
-        String fileUrl = Thread.currentThread().getContextClassLoader().getResource("").getPath();
-        if ("usr".equals(fileUrl.substring(1, 4))) {
-            fileUrl = (fileUrl.substring(0, fileUrl.length() - 16));//linux
-        } else {
-            fileUrl = (fileUrl.substring(1, fileUrl.length() - 16));//windows
-        }
-        return fileUrl;
-    }
-
-    /**
-     * 字符串转数组
-     *
-     * @param str      字符串
-     * @param splitStr 分隔符
-     * @return
-     */
-    public static String[] StringToArray(String str, String splitStr) {
-        String[] arrayStr = null;
-        if (!"".equals(str) && str != null) {
-            if (str.indexOf(splitStr) != -1) {
-                arrayStr = str.split(splitStr);
-            } else {
-                arrayStr = new String[1];
-                arrayStr[0] = str;
-            }
-        }
-        return arrayStr;
-    }
-
-    /**
-     * 读取文件
-     *
-     * @param Path
-     * @return
-     */
-    public static String ReadFile(String Path) {
-        BufferedReader reader = null;
-        String laststr = "";
-        try {
-            FileInputStream fileInputStream = new FileInputStream(Path);
-            InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream, "UTF-8");
-            reader = new BufferedReader(inputStreamReader);
-            String tempString = null;
-            while ((tempString = reader.readLine()) != null) {
-                laststr += tempString;
-            }
-            reader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    LOGGER.log(Level.ERROR,"IOException",e);
+    public static HashMap<String, Object> cleanLog(String folderPath) {
+        HashMap<String, Object> map = new HashMap<>();
+        File f = new File(folderPath);
+        if (f.exists()) {
+            File fa[] = f.listFiles();
+            for (int i = 0; i < fa.length; i++) {
+                File fs = fa[i];
+                if (fs.isDirectory()) {
+                    cleanLog(fs.getAbsolutePath());
+                } else {
+                    if (FileUtils.getFileExt(fs.getName()).equals("java")) {
+                        Path path = Paths.get(fs.getAbsolutePath());
+                        checkFiles(Paths.get(fs.getAbsolutePath()));
+                    }
                 }
             }
         }
-        return laststr;
+        return map;
+    }
+
+
+    public static void checkFiles(Path path) {
+        try {
+            List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+            File file = new File(path.toString());
+            FileReader fileReader = new FileReader(file);
+            LineNumberReader lineNumberReader = new LineNumberReader(fileReader);
+            String line = null;
+            String catchLine = null;
+            String exceptionType = null;
+            String exceptionName = null;
+            String[] strings = null;
+            Boolean editFlog = false;
+            while ((line = lineNumberReader.readLine()) != null) {
+                if (line.contains("catch (") | line.contains("catch(")) {
+                    catchLine = line.substring(line.indexOf("(") + 1, line.indexOf(")"));
+                    try {
+                        exceptionType = catchLine.substring(0, catchLine.lastIndexOf(" "));
+                        exceptionName = catchLine.substring(catchLine.lastIndexOf(" "));
+                    } catch (Exception e) {
+                        LOGGER.info("          "+file.getName()+"         " + lineNumberReader.getLineNumber() + "行读取失败");
+                    }
+                    if (exceptionType.equals("Throwable")) {
+                        exceptionType = "Exception";
+                    }
+                }
+                if (line.contains((exceptionName + ".printStackTrace").trim())) {
+                    String resultString = line.trim().replace((exceptionName + ".printStackTrace()").trim(), "logger.log(Level.WARNING," + "\"" + exceptionType + "\"" + "," + exceptionName + ")".trim());
+                    lines.set(lineNumberReader.getLineNumber() - 1, "\t\t\t" + resultString);
+                    if (editFlog == false) {
+                        editFlog = true;
+                    }
+                }
+            }
+            if (editFlog == true) {
+                Files.write(path, lines, StandardCharsets.UTF_8);
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "exception", e);
+        }
     }
 
     /**
@@ -153,9 +107,9 @@ public class FileUtils {
                     File fs = fa[i];
                     if (fs.getName().indexOf(queryStr) != -1) {
                         if (fs.isDirectory()) {
-                            folderNameList.add(fs.getName());
+                            folderNameList.add(fs.getAbsolutePath());
                         } else {
-                            fileNameList.add(fs.getName());
+                            fileNameList.add(fs.getAbsolutePath());
                         }
                     }
                 }
@@ -164,69 +118,6 @@ public class FileUtils {
             }
         }
         return map;
-    }
-
-    /**
-     * 以行为单位读取文件，读取到最后一行
-     *
-     * @param filePath
-     * @return
-     */
-    public static List<String> readFileContent(String filePath) {
-        BufferedReader reader = null;
-        List<String> listContent = new ArrayList<>();
-        try {
-            reader = new BufferedReader(new FileReader(filePath));
-            String tempString = null;
-            int line = 1;
-            // 一次读入一行，直到读入null为文件结束
-            while ((tempString = reader.readLine()) != null) {
-                listContent.add(tempString);
-                line++;
-            }
-            reader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e1) {
-                }
-            }
-        }
-        return listContent;
-    }
-
-    /**
-     * 读取指定行数据 ，注意：0为开始行
-     *
-     * @param filePath
-     * @param lineNumber
-     * @return
-     */
-    public static String readLineContent(String filePath, int lineNumber) {
-        BufferedReader reader = null;
-        String lineContent = "";
-        try {
-            reader = new BufferedReader(new FileReader(filePath));
-            int line = 0;
-            while (line <= lineNumber) {
-                lineContent = reader.readLine();
-                line++;
-            }
-            reader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e1) {
-                }
-            }
-        }
-        return lineContent;
     }
 
     /**
@@ -450,6 +341,7 @@ public class FileUtils {
         return new File(fileName).isFile();
     }
 
+
     /* 得到文件后缀名
      *
      * @param fileName
@@ -465,95 +357,5 @@ public class FileUtils {
         }
     }
 
-    /**
-     * 删除文件夹及其下面的子文件夹
-     *
-     * @param dir
-     * @throws IOException
-     */
-    public static void deleteDir(File dir) throws IOException {
-        if (dir.isFile())
-            throw new IOException("IOException -> BadInputException: not a directory.");
-        File[] files = dir.listFiles();
-        if (files != null) {
-            for (int i = 0; i < files.length; i++) {
-                File file = files[i];
-                if (file.isFile()) {
-                    file.delete();
-                } else {
-                    deleteDir(file);
-                }
-            }
-        }
-        dir.delete();
-    }
-
-    /**
-     * 复制文件
-     *
-     * @param src
-     * @param dst
-     * @throws Exception
-     */
-    public static void copy(File src, File dst) throws Exception {
-        int BUFFER_SIZE = 4096;
-        InputStream in = null;
-        OutputStream out = null;
-        try {
-            in = new BufferedInputStream(new FileInputStream(src), BUFFER_SIZE);
-            out = new BufferedOutputStream(new FileOutputStream(dst), BUFFER_SIZE);
-            byte[] buffer = new byte[BUFFER_SIZE];
-            int len = 0;
-            while ((len = in.read(buffer)) > 0) {
-                out.write(buffer, 0, len);
-            }
-        } catch (Exception e) {
-            throw e;
-        } finally {
-            if (null != in) {
-                try {
-                    in.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                in = null;
-            }
-            if (null != out) {
-                try {
-                    out.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                out = null;
-            }
-        }
-    }
-
-    /*
-     * 得到一个文件夹下所有文件
-     */
-    public static List<String> getAllFileNameInFold(String fold_path) {
-        List<String> file_paths = new ArrayList<String>();
-
-        LinkedList<String> folderList = new LinkedList<String>();
-        folderList.add(fold_path);
-        while (folderList.size() > 0) {
-            File file = new File(folderList.peekLast());
-            folderList.removeLast();
-            File[] files = file.listFiles();
-            ArrayList<File> fileList = new ArrayList<File>();
-            for (int i = 0; i < files.length; i++) {
-                if (files[i].isDirectory()) {
-                    folderList.add(files[i].getPath());
-                } else {
-                    fileList.add(files[i]);
-                }
-            }
-            for (File f : fileList) {
-                file_paths.add(f.getAbsoluteFile().getPath());
-            }
-        }
-        return file_paths;
-    }
 
 }
