@@ -21,51 +21,7 @@ public class RandomAccessFileUtils {
         try {
             //初始化对象,以"rw"(读写方式)访问文件
             raf = new RandomAccessFile(path, "rw");
-            //临时变量,存放每次读出来的文件内容
-            String line = null;
-            // 记住上一次的偏移量
-            long lastPoint = 0;
-            // 记录当前catch代码块的偏移量
-            long catchPoint = 0;
-            //确认当前catch是否结束
-            int findCatchBlock = 1;
-            boolean replaceFlag = true;
-            while ((line = raf.readLine()) != null) {
-                // 查找catch代码块
-                if (line.contains("catch (")) {
-                    while (line != null) {
-                        //截取catch后的字符串
-                        line = StringUtils.substring(line, line.indexOf("catch"));
-                        // 文件当前偏移量 返回文件记录指针的当前位置
-                        catchPoint = raf.getFilePointer();
-                        if (line.contains(("{"))) {
-                            findCatchBlock = findCatchBlock + 1;
-                        }
-                        if (line.contains(("}"))) {
-                            findCatchBlock = findCatchBlock - 1;
-                        }
-                        if (line.contains("e.printStackTrace();")) {
-                            String str = line.replace(oldstr, newStr);
-                            replaceFlag = false;
-                            LOGGER.info("Replace e.printStackTrace() to " + str);
-                        }
-                        if (line.toLowerCase(Locale.ROOT).contains("log")) {
-                            replaceFlag = false;
-                        }
-                        if (findCatchBlock == 0) {
-                            lastPoint=raf.getFilePointer();
-                        }
-                        if (findCatchBlock == 0 && replaceFlag) {
-                            lastPoint = raf.getFilePointer();
-                            raf.seek(catchPoint);
-                            raf.readLine();
-                            raf.writeBytes("logger.log(Level.WARNING,\"\",e)");
-                            //修改内容,line读出整行数据
-                        }
-                        line=raf.readLine();
-                    }
-                }
-            }
+            replace(raf);
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -77,6 +33,59 @@ public class RandomAccessFileUtils {
         }
         return true;
     }
+
+    /**
+     *
+     */
+    public static void replace(RandomAccessFile raf) throws IOException {
+        //临时变量,存放每次读出来的文件内容
+        String line = null;
+        //外层循环
+        while ((line = raf.readLine()) != null) {
+            // 查找catch代码块
+            findCatch(line, raf);
+        }
+    }
+
+    public static void findCatch(String line, RandomAccessFile raf) throws IOException {
+        // 记住上一次的偏移量
+        long lastPoint = 0;
+        //确认当前catch是否结束
+        int findCatchBlock = 0;
+        if (line.contains("catch (") | line.contains("catch(")) {
+            lastPoint = raf.getFilePointer();
+            //截取catch后的字符串
+            String catchLine = StringUtils.substring(line, line.indexOf("catch"));
+            line = catchLine;
+            String frontLine = "";
+            String backLine = "";
+            while (true) {
+                if (line.contains("{") | frontLine.contains("{")) {
+                    findCatchBlock = findCatchBlock + 1;
+                }
+                if (line.contains("}") | frontLine.contains("}")) {
+                    findCatchBlock = findCatchBlock - 1;
+                }
+                if (line.contains("e.printStackTrace();")) {
+                    line.replace("e.printStackTrace();", "afawfawf");
+                }
+                if (findCatchBlock == 0 && !(catchLine.equals(line))) {
+                    raf.seek(lastPoint);
+                    break;
+                }
+                if (line.contains("catch (") && !(catchLine.equals(line)) && findCatchBlock !=0) {
+                    findCatch(line, raf);
+                }
+                line = raf.readLine();
+                if (line.contains("catch (") | line.contains("catch(")) {
+                    frontLine = StringUtils.substring(line, 0, line.indexOf("catch"));
+                    backLine = StringUtils.substring(line, line.indexOf("catch"));
+                }
+
+            }
+        }
+    }
+
 
     /**
      * 文件修改
