@@ -42,7 +42,7 @@ public class RandomAccessFileUtils {
         String line = null;
         //外层循环
         while ((line = raf.readLine()) != null) {
-            // 查找catch代码块
+            // check 每一行 查找catch代码块
             findCatch(line, raf);
         }
     }
@@ -52,6 +52,7 @@ public class RandomAccessFileUtils {
         long lastPoint = 0;
         //确认当前catch是否结束
         int findCatchBlock = 0;
+        //找到catch 代码块
         if (line.contains("catch (") | line.contains("catch(")) {
             lastPoint = raf.getFilePointer();
             //截取catch后的字符串
@@ -60,10 +61,10 @@ public class RandomAccessFileUtils {
             String frontLine = "";
             String backLine = "";
             while (true) {
-                if (line.contains("{") | frontLine.contains("{")) {
+                if (line.contains("{")) {
                     findCatchBlock = findCatchBlock + 1;
                 }
-                if (line.contains("}") | frontLine.contains("}")) {
+                if (line.contains("}")) {
                     findCatchBlock = findCatchBlock - 1;
                 }
                 if (line.contains("e.printStackTrace();")) {
@@ -73,13 +74,14 @@ public class RandomAccessFileUtils {
                     raf.seek(lastPoint);
                     break;
                 }
-                if (line.contains("catch (") && !(catchLine.equals(line)) && findCatchBlock !=0) {
+                if (backLine.contains("catch (") && !(catchLine.equals(line)) && findCatchBlock !=0) {
                     findCatch(line, raf);
                 }
                 line = raf.readLine();
                 if (line.contains("catch (") | line.contains("catch(")) {
-                    frontLine = StringUtils.substring(line, 0, line.indexOf("catch"));
                     backLine = StringUtils.substring(line, line.indexOf("catch"));
+                    line = StringUtils.substring(line, 0, line.indexOf("catch"));
+
                 }
 
             }
