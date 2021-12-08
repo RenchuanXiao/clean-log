@@ -48,6 +48,7 @@ public class RandomAccessFileUtils {
     }
 
     public static void findCatch(String line, RandomAccessFile raf) throws IOException {
+
         // 记住上一次的偏移量
         long lastPoint = 0;
         //确认当前catch是否结束
@@ -58,9 +59,9 @@ public class RandomAccessFileUtils {
             //截取catch后的字符串
             String catchLine = StringUtils.substring(line, line.indexOf("catch"));
             line = catchLine;
-            String frontLine = "";
             String backLine = "";
             while (true) {
+                System.out.println(line + backLine);
                 if (line.contains("{")) {
                     findCatchBlock = findCatchBlock + 1;
                 }
@@ -73,17 +74,17 @@ public class RandomAccessFileUtils {
                 if (findCatchBlock == 0 && !(catchLine.equals(line))) {
                     raf.seek(lastPoint);
                     break;
+                } else {
+                    if (backLine.contains("{")) {
+                        findCatchBlock = findCatchBlock + 1;
+                    }
                 }
-                if (backLine.contains("catch (") && !(catchLine.equals(line)) && findCatchBlock !=0) {
-                    findCatch(line, raf);
-                }
+                backLine = "";
                 line = raf.readLine();
                 if (line.contains("catch (") | line.contains("catch(")) {
                     backLine = StringUtils.substring(line, line.indexOf("catch"));
                     line = StringUtils.substring(line, 0, line.indexOf("catch"));
-
                 }
-
             }
         }
     }
