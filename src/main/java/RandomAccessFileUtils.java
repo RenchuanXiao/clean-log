@@ -40,9 +40,8 @@ public class RandomAccessFileUtils {
     public static void replace(RandomAccessFile raf) throws IOException {
         //临时变量,存放每次读出来的文件内容
         String line = null;
-         raf.seek(42);
-         raf.writeBytes("Adadad\n");
-
+        raf.seek(42);
+        raf.writeBytes("Adadad\n");
 
 
         //外层循环
@@ -59,7 +58,7 @@ public class RandomAccessFileUtils {
         //确认当前catch是否结束
         int findCatchBlock = 0;
         //写文件时的偏移量
-        long writePoint =0;
+        long writePoint = 0;
 
         //找到catch 代码块
         if (line.contains("catch (") | line.contains("catch(")) {
@@ -69,7 +68,7 @@ public class RandomAccessFileUtils {
             line = catchLine;
             String backLine = "";
             while (true) {
-                writePoint =raf.getFilePointer();
+                writePoint = raf.getFilePointer();
                 System.out.println(line + backLine);
                 if (line.contains("{")) {
                     findCatchBlock = findCatchBlock + 1;
@@ -78,7 +77,7 @@ public class RandomAccessFileUtils {
                     findCatchBlock = findCatchBlock - 1;
                 }
                 if (line.contains("e.printStackTrace();")) {
-                 String newline = line.replace( "e.printStackTrace();","afawfawf");
+                    String newline = line.replace("e.printStackTrace();", "afawfawf");
                     raf.writeBytes(newline);
                 }
                 if (findCatchBlock == 0 && !(catchLine.equals(line))) {
