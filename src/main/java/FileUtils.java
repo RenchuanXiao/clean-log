@@ -112,7 +112,12 @@ public class FileUtils {
                 lines.add(importIndex, "import org.apache.logging.log4j.Logger;");
                 lines.add(importIndex, "import org.apache.logging.log4j.LogManager;");
                 lines.add(importIndex, "import org.apache.logging.log4j.Level;");
-                lines.add(publicClassIndex + 3, "private static final Logger LOGGER = LogManager.getLogger();");
+                String checkline = lines.get(publicClassIndex+2);
+                if (checkline.contains("}")) {
+                    lines.add(publicClassIndex + 2, "private static final Logger LOGGER = LogManager.getLogger();");
+                } else {
+                    lines.add(publicClassIndex + 3, "private static final Logger LOGGER = LogManager.getLogger();");
+                }
             }
             return lines;
         } catch (Exception e) {
